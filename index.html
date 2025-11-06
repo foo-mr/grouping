@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>符老师分组系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+
+        /* --- Page Transitions --- */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* --- Animation Page Styles --- */
+        #animationPage {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.95);
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        #nameSlotMachine {
+            position: relative;
+            width: 80%;
+            max-width: 600px;
+            height: 150px;
+            margin: 100px auto 20px;
+            border: 4px solid #e0e0e0;
+            border-radius: 12px;
+            background: #ffffff;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+
+        #slotReel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            transition: top 0.1s ease-in-out;
+        }
+
+        .slotName {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 150px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            padding: 0 20px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #assignmentText {
+            text-align: center;
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #555;
+            height: 80px;
+        }
+
+        /* --- Timer --- */
+        #timerContainer.retracted { transform: translateX(calc(100% - 3.5rem)); }
+        #timerContainer { transition: transform 0.3s ease-in-out; z-index: 50; }
+        #timerHandle { cursor: pointer; }
+
+        /* --- Timer Input --- */
+        .timer-input-display {
+            letter-spacing: 0.1em;
+            cursor: text;
+        }
+        .timer-input-display:focus { outline: none; background-color: #f4f4f5; }
+
+        /* --- Group Card Colors --- */
+        .group-card-colors {
+            --color-bg: #e0e7ff; /* indigo-100 */
+            --color-text: #3730a3; /* indigo-800 */
+            --color-header-bg: #4f46e5; /* indigo-600 */
+            --color-header-text: #ffffff;
+        }
+        .group-color-1 { --color-bg: #dbeafe; --color-text: #1e40af; --color-header-bg: #2563eb; } /* blue */
+        .group-color-2 { --color-bg: #d1fae5; --color-text: #065f46; --color-header-bg: #10b981; } /* green */
+        .group-color-3 { --color-bg: #fef3c7; --color-text: #92400e; --color-header-bg: #f59e0b; } /* amber */
+        .group-color-4 { --color-bg: #fee2e2; --color-text: #991b1b; --color-header-bg: #ef4444; } /* red */
+        .group-color-5 { --color-bg: #f3e8ff; --color-text: #581c87; --color-header-bg: #9333ea; } /* purple */
+        .group-color-6 { --color-bg: #ffe4e6; --color-text: #9f1239; --color-header-bg: #e11d48; } /* rose */
+        .group-color-7 { --color-bg: #e0f2fe; --color-text: #075985; --color-header-bg: #0ea5e9; } /* sky */
+        .group-color-8 { --color-bg: #dcfce7; --color-text: #166534; --color-header-bg: #22c55e; } /* lime */
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        /* --- Name Reveal Animation --- */
+        .name-reveal {
+            opacity: 0;
+            transform: translateY(15px) scale(0.95);
+            transition: opacity 0.4s cubic-bezier(0.25, 0.1, 0.25, 1), transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        .name-reveal.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- =========== PAGE 1: SETUP =========== -->
+    <div id="setupPage" class="page active">
+        <div class="min-h-screen flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-2xl">
+                
+                <!-- Header -->
+                <div class="flex items-center justify-center mb-6">
+                    <span class="text-3xl mr-3">🎉</span>
+                    <h1 class="text-2xl font-bold text-gray-700">随机分组系统</h1>
+                </div>
+
+                <!-- Card: Import List -->
+                <div class="rounded-lg bg-gray-50 border border-gray-200 p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">汇入名单</h2>
+                    
+                    <!-- Name Tags Display -->
+                    <div id="nameDisplay" class="w-full min-h-[80px] bg-white border border-gray-300 rounded-lg p-3 flex flex-wrap gap-2 mb-3">
+                        <!-- Tags will be injected here -->
+                    </div>
+
+                    <!-- Input Box -->
+                    <input type="text" id="nameInputBox" placeholder="Type names and press Enter, 或复制贴上名单..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
+                    <!-- Clear Button -->
+                    <button id="clearButton" class="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                        Clear List
+                    </button>
+                </div>
+                
+                <!-- Card: Grouping Options -->
+                <div class="rounded-lg bg-gray-50 border border-gray-200 p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">分组选项</h2>
+
+                    <!-- Tab Buttons -->
+                    <div class="mb-4">
+                        <button id="tabBtnGroup" class="px-4 py-2 font-medium rounded-l-lg bg-blue-600 text-white">By Number of Groups （多少组</button>
+                        <button id="tabBtnStudent" class="px-4 py-2 font-medium rounded-r-lg bg-white text-gray-700 border border-gray-300">By Students per Group （多少人一组)</button>
+                    </div>
+
+                    <!-- Tab Content 1: By Number of Groups -->
+                    <div id="tabContentGroup" class="tab-content active">
+                        <label for="groupCount" class="block text-center text-lg font-medium text-gray-700 mb-3">多少组别?</label>
+                        <div class="flex items-center justify-center">
+                            <button id="groupDecrement" class="w-12 h-12 text-2xl font-bold text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300">-</button>
+                            <input type="number" id="groupCount" value="2" min="1" class="w-24 h-12 text-center text-2xl font-bold mx-4 border-none bg-transparent focus:outline-none" readonly>
+                            <button id="groupIncrement" class="w-12 h-12 text-2xl font-bold text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content 2: By Students per Group -->
+                    <div id="tabContentStudent" class="tab-content">
+                        <label for="studentCount" class="block text-center text-lg font-medium text-gray-700 mb-3">各组别多少人?</label>
+                        <div class="flex items-center justify-center">
+                            <button id="studentDecrement" class="w-12 h-12 text-2xl font-bold text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300">-</button>
+                            <input type="number" id="studentCount" value="2" min="1" class="w-24 h-12 text-center text-2xl font-bold mx-4 border-none bg-transparent focus:outline-none" readonly>
+                            <button id="studentIncrement" class="w-12 h-12 text-2xl font-bold text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Start Button -->
+                <button id="startButton" class="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-bold text-xl py-4 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg">
+                    开始分组!
+                </button>
+                <p id="setupError" class="text-red-500 text-center mt-3 h-4"></p>
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- =========== PAGE 2: RESULTS =========== -->
+    <div id="resultsPage" class="page">
+        <div class="container mx-auto p-8">
+            <h1 class="text-4xl font-bold text-center mb-8">组别</h1>
+            
+            <!-- Group Results Container -->
+            <div id="resultsContainer" class="flex flex-wrap justify-center gap-6">
+                <!-- Group cards will be injected here -->
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex justify-center gap-4 mt-12">
+                <button id="backButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                    返回
+                </button>
+                <button id="downloadButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                    下载
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========== ANIMATION OVERLAY =========== -->
+    <div id="animationPage">
+        <div id="nameSlotMachine">
+            <div id="slotReel">
+                <!-- Names will be injected here -->
+            </div>
+        </div>
+        <div id="assignmentText">
+            分组中...
+        </div>
+    </div>
+    
+    <!-- =========== TIMER WIDGET =========== -->
+    <div id="timerContainer" class="fixed top-20 right-0 bg-white rounded-l-lg shadow-xl p-4 w-72 retracted">
+        <!-- Handle -->
+        <div id="timerHandle" class="absolute left-0 top-0 bottom-0 w-14 bg-gray-700 hover:bg-gray-800 rounded-l-lg flex items-center justify-center text-white">
+            <span id="timerIcon">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </span>
+        </div>
+        
+        <!-- Timer Content -->
+        <div class="ml-14">
+            <h3 class="text-xl font-bold text-gray-800 text-center mb-3">计时表</h3>
+            
+            <!-- Microwave Style Input -->
+            <div tabindex="0" id="timerInputDisplay" class="timer-input-display w-full text-5xl font-mono text-center text-gray-900 bg-transparent rounded-lg p-2 mb-4">
+                <span id="timerMin">00</span>:<span id="timerSec">00</span>
+            </div>
+            
+            <div class="flex justify-center gap-2 mb-3">
+                <button id="timerSet5" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm" data-minutes="5">5m</button>
+                <button id="timerSet10" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm" data-minutes="10">10m</button>
+                <button id="timerSet15" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm" data-minutes="15">15m</button>
+            </div>
+            <div class="flex justify-center gap-2">
+                <button id="timerStartStop" class="flex-1 py-2 bg-green-500 text-white rounded-lg font-semibold">开始</button>
+                <button id="timerReset" class="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg font-semibold">重置</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // We wrap all our code in a function to make sure it runs after the page is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Global State ---
+        let students = [];
+        let activeTab = 'group'; // 'group' or 'student'
+        const colorPalette = ['group-color-1', 'group-color-2', 'group-color-3', 'group-color-4', 'group-color-5', 'group-color-6', 'group-color-7', 'group-color-8'];
+
+        // --- Page Elements ---
+        const setupPage = document.getElementById('setupPage');
+        const resultsPage = document.getElementById('resultsPage');
+        const animationPage = document.getElementById('animationPage');
+
+        // --- Setup Page Elements ---
+        const nameDisplay = document.getElementById('nameDisplay');
+        const nameInputBox = document.getElementById('nameInputBox');
+        const clearButton = document.getElementById('clearButton');
+        const startButton = document.getElementById('startButton');
+        const setupError = document.getElementById('setupError');
+        
+        // --- Grouping Tab Elements ---
+        const tabBtnGroup = document.getElementById('tabBtnGroup');
+        const tabBtnStudent = document.getElementById('tabBtnStudent');
+        const tabContentGroup = document.getElementById('tabContentGroup');
+        const tabContentStudent = document.getElementById('tabContentStudent');
+
+        // --- Stepper: Group Count ---
+        const groupDecrement = document.getElementById('groupDecrement');
+        const groupIncrement = document.getElementById('groupIncrement');
+        const groupCount = document.getElementById('groupCount');
+
+        // --- Stepper: Student Count ---
+        const studentDecrement = document.getElementById('studentDecrement');
+        const studentIncrement = document.getElementById('studentIncrement');
+        const studentCount = document.getElementById('studentCount');
+
+        // --- Results Page Elements ---
+        const resultsContainer = document.getElementById('resultsContainer');
+        const backButton = document.getElementById('backButton');
+        const downloadButton = document.getElementById('downloadButton');
+
+        // --- Animation Elements ---
+        // const slotReel = document.getElementById('slotReel'); // No longer needed
+        // const assignmentText = document.getElementById('assignmentText'); // No longer needed
+
+        // --- Timer Elements ---
+        const timerContainer = document.getElementById('timerContainer');
+        const timerHandle = document.getElementById('timerHandle');
+        const timerIcon = document.getElementById('timerIcon');
+        const timerInputDisplay = document.getElementById('timerInputDisplay');
+        const timerMin = document.getElementById('timerMin');
+        const timerSec = document.getElementById('timerSec');
+        const timerStartStop = document.getElementById('timerStartStop');
+        const timerReset = document.getElementById('timerReset');
+        const timerSet5 = document.getElementById('timerSet5');
+        const timerSet10 = document.getElementById('timerSet10');
+        const timerSet15 = document.getElementById('timerSet15');
+
+        // --- Timer State ---
+        let timerInterval;
+        let isTimerRunning = false;
+        let timeValueStr = "0000"; // Store as 4-digit string
+        let totalSeconds = 0;
+
+
+        // =========== 1. NAME INPUT LOGIC ===========
+
+        function addName(name) {
+            const trimmedName = name.trim();
+            if (trimmedName.length > 0 && !students.includes(trimmedName)) {
+                students.push(trimmedName);
+                updateNameDisplay();
+            }
+        }
+
+        function removeName(nameToRemove) {
+            students = students.filter(name => name !== nameToRemove);
+            updateNameDisplay();
+        }
+
+        function updateNameDisplay() {
+            nameDisplay.innerHTML = ''; // Clear display
+            if (students.length === 0) {
+                nameDisplay.innerHTML = '<span class="text-gray-400 italic p-2">目前名单是空的，请新增...</span>';
+            } else {
+                students.forEach(name => {
+                    const tag = document.createElement('span');
+                    tag.className = 'bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1.5 rounded-full flex items-center gap-2';
+                    
+                    const text = document.createElement('span');
+                    text.textContent = name;
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'text-blue-500 hover:text-blue-700';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.onclick = () => removeName(name);
+                    
+                    tag.appendChild(text);
+                    tag.appendChild(removeBtn);
+                    nameDisplay.appendChild(tag);
+                });
+            }
+        }
+
+        nameInputBox.addEventListener('paste', (event) => {
+            event.preventDefault();
+            const pastedText = (event.clipboardData || window.clipboardData).getData('text');
+            let finalNames = [];
+            const lines = pastedText.split(/\r?\n|\r/);
+            
+            lines.forEach(line => {
+                line.split(',').forEach(name => {
+                    const trimmedName = name.trim();
+                    if (trimmedName.length > 0) {
+                        finalNames.push(trimmedName);
+                    }
+                });
+            });
+            finalNames.forEach(addName);
+            nameInputBox.value = '';
+            nameInputBox.focus();
+        });
+
+        nameInputBox.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter' || event.key === ',') {
+                event.preventDefault();
+                const value = nameInputBox.value;
+                const names = value.split(',').map(n => n.trim()).filter(n => n.length > 0);
+                names.forEach(addName);
+                nameInputBox.value = '';
+                nameInputBox.focus();
+            }
+        });
+        
+        clearButton.addEventListener('click', () => {
+            students = [];
+            updateNameDisplay();
+        });
+
+        // =========== 2. GROUPING OPTIONS LOGIC ===========
+
+        // --- Stepper Controls ---
+        groupDecrement.addEventListener('click', () => {
+            let count = parseInt(groupCount.value);
+            if (count > 1) groupCount.value = count - 1;
+        });
+        groupIncrement.addEventListener('click', () => {
+            groupCount.value = parseInt(groupCount.value) + 1;
+        });
+        studentDecrement.addEventListener('click', () => {
+            let count = parseInt(studentCount.value);
+            if (count > 1) studentCount.value = count - 1;
+        });
+        studentIncrement.addEventListener('click', () => {
+            studentCount.value = parseInt(studentCount.value) + 1;
+        });
+
+        // --- Tab Controls ---
+        function switchTab(tab) {
+            activeTab = tab;
+            if (tab === 'group') {
+                tabContentGroup.classList.add('active');
+                tabContentStudent.classList.remove('active');
+                
+                tabBtnGroup.classList.add('bg-blue-600', 'text-white');
+                tabBtnGroup.classList.remove('bg-white', 'text-gray-700', 'border');
+                
+                tabBtnStudent.classList.add('bg-white', 'text-gray-700', 'border');
+                tabBtnStudent.classList.remove('bg-blue-600', 'text-white');
+            } else {
+                tabContentGroup.classList.remove('active');
+                tabContentStudent.classList.add('active');
+
+                tabBtnStudent.classList.add('bg-blue-600', 'text-white');
+                tabBtnStudent.classList.remove('bg-white', 'text-gray-700', 'border');
+                
+                tabBtnGroup.classList.add('bg-white', 'text-gray-700', 'border');
+                tabBtnGroup.classList.remove('bg-blue-600', 'text-white');
+            }
+        }
+        tabBtnGroup.addEventListener('click', () => switchTab('group'));
+        tabBtnStudent.addEventListener('click', () => switchTab('student'));
+
+
+        // =========== 3. START & ANIMATION LOGIC ===========
+
+        startButton.addEventListener('click', () => {
+            setupError.textContent = '';
+            if (students.length === 0) {
+                setupError.textContent = '请汇入名单。';
+                return;
+            }
+
+            let numGroups;
+            if (activeTab === 'group') {
+                numGroups = parseInt(groupCount.value);
+            } else {
+                const numStudentsPerGroup = parseInt(studentCount.value);
+                if (numStudentsPerGroup <= 0) {
+                     setupError.textContent = '各组别学生人数必须大于1。';
+                     return;
+                }
+                numGroups = Math.ceil(students.length / numStudentsPerGroup);
+            }
+
+            if (numGroups <= 0) {
+                setupError.textContent = '组别数量必须大于1。';
+                return;
+            }
+            
+            if (numGroups > students.length) {
+                setupError.textContent = '组别数量比学生多!';
+                return;
+            }
+
+            runAssignmentAnimation(numGroups);
+        });
+
+        function runAssignmentAnimation(numGroups) {
+            // --- 1. Create Groups ---
+            let groups = [];
+            for (let i = 0; i < numGroups; i++) {
+                groups.push({ id: i + 1, names: [] });
+            }
+
+            // --- 2. Shuffle Students ---
+            let shuffledStudents = [...students].sort(() => Math.random() - 0.5);
+
+            // --- 3. Directly Assign Students ---
+            let groupIndex = 0;
+            shuffledStudents.forEach(studentName => {
+                const targetGroup = groups[groupIndex];
+                targetGroup.names.push(studentName);
+                groupIndex = (groupIndex + 1) % numGroups; // Cycle through groups
+            });
+
+            // --- 4. Show Results Immediately ---
+            setupPage.classList.remove('active'); // Hide setup
+            endAnimation(groups); // Go straight to end
+        }
+
+        /*
+        // This function is no longer needed
+        function spinReelTo(name, callback) {
+            const reelItems = Array.from(slotReel.children);
+            const targetIndex = reelItems.findIndex(item => item.textContent === name);
+            
+            if (targetIndex === -1) {
+                callback(); // Should not happen, but safety
+                return;
+            }
+
+            const itemHeight = 150; // Must match .slotName height
+            const spinDuration = 500; // 0.5s
+            
+            // Calculate a "spin" position (go past the target a few times)
+            const randomOffset = Math.random() * itemHeight - (itemHeight / 2);
+            const spinTarget = (targetIndex * itemHeight) + (itemHeight * students.length); // Go past one full set
+            
+            slotReel.style.transition = 'none';
+            slotReel.style.top = '0px';
+
+            // Start the spin
+            setTimeout(() => {
+                slotReel.style.transition = 'top ' + spinDuration + 'ms cubic-bezier(0.25, 0.1, 0.25, 1)';
+                slotReel.style.top = '-' + spinTarget + 'px';
+            }, 50);
+
+            // "Land" on the final name
+            setTimeout(() => {
+                const finalPosition = (targetIndex * itemHeight) + randomOffset;
+                slotReel.style.transition = 'top 0.3s ease-out';
+                slotReel.style.top = '-' + finalPosition + 'px';
+            }, spinDuration + 100);
+
+            // After landing, call the callback
+            setTimeout(callback, spinDuration + 500);
+        }
+        */
+
+        function endAnimation(groups) {
+            // Hide animation page
+            animationPage.style.display = 'none';
+            
+            // Show results page
+            resultsPage.classList.add('active');
+            
+            // Build results display (this will now create hidden names)
+            buildResultsCards(groups);
+            
+            // Start the reveal animation
+            revealNamesOneByOne();
+        }
+
+        // =========== 4. RESULTS PAGE LOGIC ===========
+
+        function revealNamesOneByOne() {
+            const namesToReveal = document.querySelectorAll('.name-reveal');
+            let delay = 0;
+            const interval = 350; // 350ms between each name
+
+            namesToReveal.forEach((nameEl) => {
+                setTimeout(() => {
+                    nameEl.classList.add('visible');
+                }, delay);
+                delay += interval;
+            });
+        }
+
+        function buildResultsCards(groups) {
+            resultsContainer.innerHTML = ''; // Clear previous results
+            groups.forEach((group, index) => {
+                const colorClass = colorPalette[index % colorPalette.length];
+                
+                const card = document.createElement('div');
+                card.className = 'group-card-colors ' + colorClass + ' w-full sm:w-64 bg-white rounded-lg shadow-md overflow-hidden flex-shrink-0';
+                
+                // Card Header
+                const header = document.createElement('div');
+                header.className = 'p-3 flex justify-between items-center';
+                header.style.backgroundColor = 'var(--color-header-bg)';
+                header.style.color = 'var(--color-header-text)';
+                
+                header.innerHTML =
+                    '<h3 class="text-lg font-bold">Group ' + group.id + '</h3>' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">' +
+                      '<path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a2 2 0 00-2-2H6a2 2 0 00-2 2v3h12z" />' +
+                    '</svg>';
+                
+                // Card Body
+                const body = document.createElement('ul');
+                body.className = 'divide-y divide-gray-200';
+                body.style.backgroundColor = 'var(--color-bg)';
+                body.style.color = 'var(--color-text)';
+
+                if (group.names.length === 0) {
+                    body.innerHTML = '<li class="px-4 py-3 text-sm italic">Empty</li>';
+                } else {
+                    group.names.forEach((name, i) => {
+                        const li = document.createElement('li');
+                        // Add 'name-reveal' class to animate
+                        li.className = 'name-reveal px-4 py-3 text-sm font-medium';
+                        if (i % 2 === 1) {
+                           li.style.backgroundColor = 'rgba(255,255,255,0.2)'; // Lighter strip
+                        }
+                        li.textContent = name;
+                        body.appendChild(li);
+                    });
+                }
+                
+                card.appendChild(header);
+                card.appendChild(body);
+                resultsContainer.appendChild(card);
+            });
+        }
+        
+        backButton.addEventListener('click', () => {
+            resultsPage.classList.remove('active');
+            setupPage.classList.add('active');
+        });
+        
+        downloadButton.addEventListener('click', () => {
+            const resultsHTML = resultsContainer.innerHTML;
+            const styles =
+                '<s' + 'cript src="https://cdn.tailwindcss.com"></s' + 'cript>' +
+                '<style>' +
+                    'body { font-family: \'Inter\', sans-serif; background-color: #f3f4f6; }' +
+                    '.group-card-colors {' +
+                        '--color-bg: #e0e7ff; --color-text: #3730a3; --color-header-bg: #4f46e5; --color-header-text: #ffffff;' +
+                    '}' +
+                    '.group-color-1 { --color-bg: #dbeafe; --color-text: #1e40af; --color-header-bg: #2563eb; }' +
+                    '.group-color-2 { --color-bg: #d1fae5; --color-text: #065f46; --color-header-bg: #10b981; }' +
+                    '.group-color-3 { --color-bg: #fef3c7; --color-text: #92400e; --color-header-bg: #f59e0b; }' +
+                    '.group-color-4 { --color-bg: #fee2e2; --color-text: #991b1b; --color-header-bg: #ef4444; }' +
+                    '.group-color-5 { --color-bg: #f3e8ff; --color-text: #581c87; --color-header-bg: #9333ea; }' +
+                    '.group-color-6 { --color-bg: #ffe4e6; --color-text: #9f1239; --color-header-bg: #e11d48; }' +
+                    '.group-color-7 { --color-bg: #e0f2fe; --color-text: #075985; --color-header-bg: #0ea5e9; }' +
+                    '.group-color-8 { --color-bg: #dcfce7; --color-text: #166534; --color-header-bg: #22c55e; }' +
+                '</style>';
+            
+            const htmlContent =
+                '<!DOCTYPE html><html lang="en">' +
+                '<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+                '<title>Student Groups</title>' + styles + '</head>' +
+                '<body><div class="container mx-auto p-8">' +
+                '<h1 class="text-4xl font-bold text-center mb-8">Generated Groups</h1>' +
+                '<div class="flex flex-wrap justify-center gap-6">' + resultsHTML + '</div>' +
+                '</div></body></html>';
+            
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'student-groups.html';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        });
+
+        // =========== 5. TIMER LOGIC ===========
+        
+        function pad(num) {
+            return num < 10 ? '0' + num : '' + num;
+        }
+        
+        timerHandle.addEventListener('click', () => {
+            timerContainer.classList.toggle('retracted');
+            updateTimerHandleIcon();
+        });
+
+        timerInputDisplay.addEventListener('keydown', (e) => {
+            if (isTimerRunning) { e.preventDefault(); return; }
+            
+            if (e.key >= '0' && e.key <= '9') {
+                e.preventDefault();
+                timeValueStr = (timeValueStr + e.key).slice(-4);
+            } else if (e.key === 'Backspace') {
+                e.preventDefault();
+                timeValueStr = ('0' + timeValueStr.slice(0, -1)).slice(-4);
+            }
+            
+            updateMicrowaveDisplay();
+        });
+
+        function updateMicrowaveDisplay() {
+            timerMin.textContent = timeValueStr.slice(0, 2);
+            timerSec.textContent = timeValueStr.slice(2, 4);
+        }
+
+        function setTimeFromSeconds(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            timeValueStr = pad(mins) + pad(secs);
+            updateMicrowaveDisplay();
+        }
+
+        [timerSet5, timerSet10, timerSet15].forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (isTimerRunning) return;
+                const seconds = parseInt(btn.dataset.minutes) * 60;
+                setTimeFromSeconds(seconds);
+            });
+        });
+
+        timerStartStop.addEventListener('click', () => {
+            isTimerRunning = !isTimerRunning;
+            if (isTimerRunning) {
+                // === STARTING ===
+                const minutes = parseInt(timeValueStr.slice(0, 2));
+                const seconds = parseInt(timeValueStr.slice(2, 4));
+                totalSeconds = (minutes * 60) + seconds;
+
+                if (totalSeconds === 0) {
+                    totalSeconds = 5 * 60; // Default to 5m if 0
+                    setTimeFromSeconds(totalSeconds);
+                }
+                
+                timerStartStop.textContent = 'Stop';
+                timerStartStop.classList.remove('bg-green-500');
+                timerStartStop.classList.add('bg-red-500');
+                timerInputDisplay.style.pointerEvents = 'none';
+                timerInputDisplay.style.opacity = '0.7';
+                
+                timerInterval = setInterval(() => {
+                    if (totalSeconds <= 0) {
+                        clearInterval(timerInterval);
+                        isTimerRunning = false;
+                        timerStartStop.textContent = 'Start';
+                        timerStartStop.classList.remove('bg-red-500');
+                        timerStartStop.classList.add('bg-green-500');
+                        timerInputDisplay.style.pointerEvents = 'auto';
+                        timerInputDisplay.style.opacity = '1';
+                        setTimeFromSeconds(0);
+                    } else {
+                        totalSeconds--;
+                        setTimeFromSeconds(totalSeconds);
+                    }
+                    updateTimerHandleIcon();
+                }, 1000);
+            } else {
+                // === STOPPING (PAUSE) ===
+                clearInterval(timerInterval);
+                timerStartStop.textContent = 'Start';
+                timerStartStop.classList.remove('bg-red-500');
+                timerStartStop.classList.add('bg-green-500');
+                timerInputDisplay.style.pointerEvents = 'auto';
+                timerInputDisplay.style.opacity = '1';
+            }
+            updateTimerHandleIcon();
+        });
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            totalSeconds = 0;
+            timeValueStr = "0000";
+            
+            timerStartStop.textContent = 'Start';
+            timerStartStop.classList.remove('bg-red-500');
+            timerStartStop.classList.add('bg-green-500');
+            timerInputDisplay.style.pointerEvents = 'auto';
+            timerInputDisplay.style.opacity = '1';
+            
+            updateMicrowaveDisplay();
+            updateTimerHandleIcon();
+        }
+        timerReset.addEventListener('click', resetTimer);
+
+        function updateTimerHandleIcon() {
+            if (isTimerRunning && timerContainer.classList.contains('retracted')) {
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                timerIcon.innerHTML = '<span class="font-mono text-lg">' + pad(minutes) + ':' + pad(seconds) + '</span>';
+            } else {
+                timerIcon.innerHTML =
+                    '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">' +
+                      '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />' +
+                    '</svg>';
+            }
+        }
+        
+        // --- Initial State ---
+        updateNameDisplay();
+        switchTab('group');
+        updateMicrowaveDisplay();
+        updateTimerHandleIcon();
+    });
+</script>
+
+</body>
+</html>
